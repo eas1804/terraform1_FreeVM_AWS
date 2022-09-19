@@ -1,0 +1,52 @@
+
+# 2. Создаем виртуальную машину с именем test_vm_for_ansible
+resource "aws_instance" "test_vm_for_ansible" {
+  ami           = "ami-0440e5026412ff23f"     # ОС (Ubuntu, 22.04 LTS)
+  instance_type = "t3.micro"                  # тип процессора и ресурс машины (CPU и RAM)
+	subnet_id = "subnet-0cc772db0482a2639"      # одна из дефолтных подсетей
+	associate_public_ip_address = true          # автоматически установить динамический ip
+  	
+  key_name                = aws_key_pair.sli_key.key_name   # будем использовать ключ SSH - sli_key
+  vpc_security_group_ids  = [aws_security_group.sli_ssh.id] # будем использовать группу безопасности - sli_ssh
+  count = 1                                                 # Сколько машин создать. Если 0 - то удалить
+  tags = { Name = "test-instance_for_ansible" }
+}
+
+# 3.Указываем публичный ключ
+resource "aws_key_pair" "sli_key" {
+  key_name   = "slivak-key#1"
+  public_key = "${file("~/.ssh/id_ed25519.pub")}"
+}
+
+# 4. Указываем группу безопасности
+resource "aws_security_group" "sli_ssh" {
+  name        = "ssh security group"
+  description = "sli SSH SG"
+
+#  4.1 Входящий трафик
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+# 4.2 Исходящий трафик
+    egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = { Name = "allow_SSH" }
+}
+# Вывести IP адрес
+output instance_sli_ips  {
+  value       = aws_instance.test_vm_for_ansible.*.public_ip
+  }
+
+# Вывести Instance ID
+output instance_sli_id  {
+  value       = aws_instance.test_vm_for_ansible.*.id
+  }
+
+
